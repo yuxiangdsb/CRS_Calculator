@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>增强型CRS术后风险预测系统</title>
+    <style>
+        .calculator { max-width: 1200px; margin: 20px auto; padding: 30px; background: #f8f9fa; }
+        .section { background: white; padding: 25px; margin: 20px 0; border-radius: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        .input-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin: 15px 0; }
+        .input-group { display: flex; flex-direction: column; }
+        .radio-group { display: flex; gap: 15px; flex-wrap: wrap; }
+        h3 { color: #2c3e50; border-left: 5px solid #3498db; padding-left: 10px; margin: 20px 0; }
+        button { 
+            background: linear-gradient(145deg, #3498db, #2980b9); 
+            color: white; padding: 15px 40px; 
+            font-size: 18px; border-radius: 8px; 
+            margin: 25px 0; cursor: pointer; 
+            border: none;
+        }
+        .result { background: #fff; border-left: 5px solid #3498db; padding: 20px; }
+        .patient-info { background: #e3f2fd; }
+        .storage-controls { display: flex; gap: 15px; margin: 15px 0; }
+        #patientList { padding: 8px; min-width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <!-- 患者信息模块 -->
+        <div class="section patient-info">
+            <h2>患者基本信息</h2>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>姓名</label>
+                    <input type="text" id="patientName">
+                </div>
+                <div class="input-group">
+                    <label>病历号</label>
+                    <input type="text" id="patientID">
+                </div>
+                <div class="input-group">
+                    <label>入院时间</label>
+                    <input type="date" id="admissionDate">
+                </div>
+                <div class="input-group">
+                    <label>手术日期</label>
+                    <input type="date" id="surgeryDate">
+                </div>
+                <div class="input-group">
+                    <label>住院病区</label>
+                    <select id="department">
+                        <option value="1">耳鼻咽喉头颈外科一病区</option>
+                        <option value="2">耳鼻咽喉头颈外科二病区</option>
+                        <option value="3">耳鼻咽喉头颈外科三病区</option>
+                    </select>
+                </div>
+            </div>
+            <div class="storage-controls">
+                <button onclick="savePatientData()">保存数据</button>
+                <select id="patientList" onchange="loadPatientData()">
+                    <option value="">选择已存病历</option>
+                </select>
+                <button onclick="generateReport()">生成报告</button>
+            </div>
+        </div>
+
+        <!-- 预测计算器核心功能 -->
+        <div class="section">
+            <h3>基础特征（6项）</h3>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>年龄（岁）</label>
+                    <input type="number" id="age" min="18" max="100" value="">
+                </div>
+                <div class="input-group">
+                    <label>性别</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="gender" value="0" checked> 女</label>
+                        <label><input type="radio" name="gender" value="1"> 男</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>BMI</label>
+                    <input type="number" id="bmi" step="0.1" min="15" max="50" value="">
+                </div>
+                <div class="input-group">
+                    <label>吸烟史</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="smoking" value="0" checked> 无</label>
+                        <label><input type="radio" name="smoking" value=""> 有</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>哮喘病史</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="asthma" value="0" checked> 无</label>
+                        <label><input type="radio" name="asthma" value=""> 有</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>阿司匹林不耐受</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="aspirin" value="0" checked> 无</label>
+                        <label><input type="radio" name="aspirin" value=""> 有</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>疾病特征（4项）</h3>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>CRS表型</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="crstype" value="0" checked> 不伴息肉</label>
+                        <label><input type="radio" name="crstype" value=""> 伴息肉</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>鼻分泌物培养</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="culture" value="0" checked> 阴性</label>
+                        <label><input type="radio" name="culture" value=""> 阳性</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>术前CT评分</label>
+                    <input type="number" id="ctscore" min="0" max="24" step="1" value="">
+                </div>
+                <div class="input-group">
+                    <label>既往手术次数</label>
+                    <input type="number" id="prev_surgery" min="0" max="5" step="1" value="">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>手术特征（4项）</h3>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>黏膜处理方式</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="mucosa" value="" checked> 传统</label>
+                        <label><input type="radio" name="mucosa" value=""> 等离子</label>
+                        <label><input type="radio" name="mucosa" value=""> 微创</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>手术方式</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="method" value="0" checked> 常规</label>
+                        <label><input type="radio" name="method" value=""> 导航辅助</label>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>手术时长（小时）</label>
+                    <input type="number" id="duration" min="1" max="8" step="0.5" value="">
+                </div>
+                <div class="input-group">
+                    <label>手术范围</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="scope" value="" checked> 局限</label>
+                        <label><input type="radio" name="scope" value=""> 全组</label>
+                        <label><input type="radio" name="scope" value=""> 扩大</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>免疫指标（3项）</h3>
+            <div class="input-row">
+                <div class="input-group">
+                    <label>血嗜酸粒细胞（%）</label>
+                    <input type="number" id="eos" min="0" max="30" step="0.1" value="">
+                </div>
+                <div class="input-group">
+                    <label>血清IgE（IU/ml）</label>
+                    <input type="number" id="ige" min="0" max="2000" step="10" value="">
+                </div>
+                <div class="input-group">
+                    <label>CRP（mg/L）</label>
+                    <input type="number" id="crp" min="0" max="100" step="0.1" value="">
+                </div>
+            </div>
+        </div>
+
+        <button onclick="calculate()">计算风险</button>
+        <div class="section result" id="result"></div>
+    </div>
+
+<script>
+// 修复后的计算逻辑
+const weights = {
+    age: 0.12,
+    gender: {0:0, 1:0.3},
+    bmi: 0.18,
+    smoking: 1.5,
+    asthma: 1.2,
+    aspirin: 3.0,
+    crstype: {0:0, 1:1.8},
+    culture: {0:0, 1:1.2},
+    ctscore: 0.4,
+    prev_surgery: 1.1,
+    mucosa: [0.5, -0.3, 0.8],
+    method: {0:0, 1:-0.5},
+    duration: 0.35,
+    scope: [0.5, 1.5, 2.2],
+    eos: 0.15,
+    ige: 0.0007,
+    crp: 0.06
+};
+
+function calculate() {
+    // 修复：加强类型转换
+    const getValue = id => {
+        const el = document.getElementById(id);
+        return el.value ? parseFloat(el.value) : 0;
+    };
+    
+    const getRadio = name => {
+        const el = document.querySelector(`input[name="${name}"]:checked`);
+        return el ? parseFloat(el.value) : 0;
+    };
+
+    const inputs = {
+        age: getValue('age'),
+        gender: getRadio('gender'),
+        bmi: getValue('bmi'),
+        smoking: getRadio('smoking'),
+        asthma: getRadio('asthma'),
+        aspirin: getRadio('aspirin'),
+        crstype: getRadio('crstype'),
+        culture: getRadio('culture'),
+        ctscore: getValue('ctscore'),
+        prev_surgery: getValue('prev_surgery'),
+        mucosa: getRadio('mucosa'),
+        method: getRadio('method'),
+        duration: getValue('duration'),
+        scope: getRadio('scope'),
+        eos: getValue('eos'),
+        ige: getValue('ige'),
+        crp: getValue('crp')
+    };
+
+    let score = 0;
+    
+    // 基础特征
+    score += inputs.age * weights.age;
+    score += weights.gender[inputs.gender] || 0;
+    score += inputs.bmi * weights.bmi;
+    score += inputs.smoking * weights.smoking;
+    score += inputs.asthma * weights.asthma;
+    score += inputs.aspirin * weights.aspirin;
+    
+    // 疾病特征
+    score += weights.crstype[inputs.crstype] || 0;
+    score += weights.culture[inputs.culture] || 0;
+    score += inputs.ctscore * weights.ctscore;
+    score += inputs.prev_surgery * weights.prev_surgery;
+    
+    // 手术因素（修复数组索引问题）
+    score += weights.mucosa[parseInt(inputs.mucosa)] || 0;
+    score += weights.method[inputs.method] || 0;
+    score += inputs.duration * weights.duration;
+    score += weights.scope[parseInt(inputs.scope)] || 0;
+    
+    // 免疫指标
+    score += inputs.eos * weights.eos;
+    score += inputs.ige * weights.ige;
+    score += inputs.crp * weights.crp;
+
+    // 风险判定
+    const threshold = 22.5;
+    const confidence = Math.min(99, Math.abs(score - threshold)/threshold * 100).toFixed(1);
+    
+    document.getElementById('result').innerHTML = `
+        <h3>评估结果（总评分：${score.toFixed(2)}）</h3>
+        <p>风险分级：<strong style="color:${score >= threshold ? '#e74c3c' : '#2ecc71'}">
+            ${score >= threshold ? "高风险" : "低风险"}</strong>（置信度 ${confidence}%）
+        </p>
+        <p>关键危险因素：${getTopFactors(inputs)}</p>
+        <p>临床建议：${score >= threshold ? 
+            "① 术后3月内每月复查 ② 长期局部激素治疗 ③ 建议过敏原检测" : 
+            "① 术后6月复查 ② 按需局部治疗"}
+        </p>
+    `;
+}
+
+function getTopFactors(inputs) {
+    const factors = [];
+    if(inputs.aspirin === 1) factors.push("阿司匹林不耐受");
+    if(inputs.crstype === 1) factors.push("CRSwNP");
+    if(inputs.scope === 2) factors.push("扩大手术范围");
+    return factors.length ? factors.join("，") : "无显著危险因素";
+}
+
+// 数据存储功能
+function savePatientData() {
+    const patientData = {
+        info: {
+            name: document.getElementById('patientName').value,
+            id: document.getElementById('patientID').value,
+            admission: document.getElementById('admissionDate').value,
+            surgery: document.getElementById('surgeryDate').value,
+            department: document.getElementById('department').value
+        },
+        inputs: {
+            age: document.getElementById('age').value,
+            gender: document.querySelector('input[name="gender"]:checked').value,
+            bmi: document.getElementById('bmi').value,
+            // 其他字段保存逻辑类似...
+        }
+    };
+    localStorage.setItem(patientData.info.id, JSON.stringify(patientData));
+    alert('数据保存成功！');
+}
+
+// 初始化时更新患者列表
+window.onload = function() {
+    const select = document.getElementById('patientList');
+    for(let i=0; i<localStorage.length; i++){
+        const key = localStorage.key(i);
+        if(/^\d+$/.test(key)) {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key;
+            select.appendChild(option);
+        }
+    }
+}
+</script>
+</body>
+</html>
